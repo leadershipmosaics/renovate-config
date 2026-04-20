@@ -27,3 +27,10 @@ Encodes the two-tier dependency currency model from
   minor/patch updates grouped and auto-merged
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
 - **Rate limiting:** max 3 PRs/hour, 5 concurrent
+- **npm lockfile stability:** `npmInstallTwice` — runs `npm install` twice
+  after each dependency update so the lockfile stabilizes before Renovate
+  commits. Documented Renovate workaround for the class of npm bugs where
+  a single install produces a non-idempotent lockfile
+  ([npm/cli#8726](https://github.com/npm/cli/issues/8726)). Consumer repos
+  should additionally set `constraints.npm` locally to match their pinned
+  npm version; see `leadershipmosaics/lm_app` ADR-0059 for the full model.
