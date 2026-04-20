@@ -11,6 +11,7 @@
   "labels": ["dependencies"],
   "prHourlyLimit": 3,
   "prConcurrentLimit": 5,
+  "postUpdateOptions": ["npmInstallTwice"],
   "packageRules": [
     {
       "description": "Tier 1: Auto-merge patch updates (post-1.0 packages)",
