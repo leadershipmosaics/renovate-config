@@ -34,3 +34,8 @@ Encodes the two-tier dependency currency model from
   ([npm/cli#8726](https://github.com/npm/cli/issues/8726)). Consumer repos
   should additionally set `constraints.npm` locally to match their pinned
   npm version; see `leadershipmosaics/lm_app` ADR-0059 for the full model.
+- **Lockfile maintenance:** weekly refresh of lockfiles without changes to
+  manifest version ranges, auto-merged after CI passes. Closes the
+  transitive-vulnerability gap where a patched version is published but
+  no top-level manifest change pulls it through. Safe to auto-merge:
+  resolved versions move within ranges already accepted by maintainers.
