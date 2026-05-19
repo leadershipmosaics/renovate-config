@@ -12,6 +12,13 @@
   "prHourlyLimit": 3,
   "prConcurrentLimit": 5,
   "postUpdateOptions": ["npmInstallTwice"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on monday"],
+    "automerge": true,
+    "automergeType": "pr",
+    "platformAutomerge": true
+  },
   "packageRules": [
     {
       "description": "Tier 1: Auto-merge patch updates (post-1.0 packages)",
