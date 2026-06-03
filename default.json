@@ -1,9 +1,9 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Shared Renovate config for leadershipmosaics repos. Encodes ADR-0005 two-tier dependency currency model.",
+  "description": "Shared Renovate config for leadershipmosaics repos. Extends config:best-practices (the maintained upstream baseline); encodes the two-tier dependency currency model (lm_app ADR-0004 / ai-governance ADR-0005). Divergences from the upstream baseline must carry a recorded rationale.",
   "extends": [
-    "config:recommended",
-    "helpers:pinGitHubActionDigests",
+    "config:best-practices",
+    ":separateMultipleMajorReleases",
     ":dependencyDashboard"
   ],
   "schedule": ["before 9am on monday"],
@@ -43,7 +43,7 @@
       "platformAutomerge": true
     },
     {
-      "description": "Tier 2: Major updates require manual review (governed decision per ADR-0005)",
+      "description": "Tier 2: Major updates require manual review (governed decision per the dependency currency practice; sequential stepping via :separateMultipleMajorReleases)",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true,
       "labels": ["dependencies", "major-version"]
