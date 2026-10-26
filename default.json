@@ -39,7 +39,7 @@
       "groupName": "npm non-major updates"
     },
     {
-      "description": "Tier 1: Auto-merge minor npm updates (post-1.0 packages). A grouped PR auto-merges only when every update in it qualifies, so a pre-1.0 package in the group holds it for a human",
+      "description": "Tier 1: Auto-merge minor npm updates (post-1.0 packages); a grouped PR auto-merges only when every update in it qualifies (README)",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["minor"],
       "matchCurrentVersion": "!/^0/",
