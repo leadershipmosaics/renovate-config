@@ -20,9 +20,15 @@ Encodes the two-tier dependency currency model from
 [ADR-0005](https://github.com/leadershipmosaics/ai-governance/blob/main/docs/decisions/0005-dependency-currency-practice.md):
 
 - **Tier 1 (within-range):** patch updates auto-merge for post-1.0
-  packages; minor updates grouped per package manager
+  packages, except security PRs (below); minor updates grouped per
+  package manager
 - **Tier 2 (cross-major):** major updates require Dependency Dashboard
   approval (governed decision)
+- **Security updates:** a PR Renovate opens for a vulnerability alert is
+  never auto-merged, whatever its update type; a human merges it
+  (ruling 2026-10-23, `leadershipmosaics/lm_app#1718`). This needs the
+  Renovate app to have access to the repository's vulnerability alerts;
+  without it the fix arrives as an ordinary Tier 1 PR
 - **GitHub Actions:** SHA-pinned via `helpers:pinGitHubActionDigests`;
   minor/patch updates grouped and auto-merged
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
