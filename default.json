@@ -39,6 +39,15 @@
       "groupName": "npm non-major updates"
     },
     {
+      "description": "Tier 1: Auto-merge minor npm updates (post-1.0 packages); a grouped PR auto-merges only when every update in it qualifies (README)",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": "!/^0/",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
       "description": "Tier 1: Group GitHub Actions minor/patch updates",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["minor", "patch", "digest"],

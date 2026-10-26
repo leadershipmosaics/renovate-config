@@ -19,9 +19,11 @@ Add to your repository's `renovate.json`:
 Encodes the two-tier dependency currency model from
 [ADR-0005](https://github.com/leadershipmosaics/ai-governance/blob/main/docs/decisions/0005-dependency-currency-practice.md):
 
-- **Tier 1 (within-range):** patch updates auto-merge for post-1.0
-  packages, except security PRs (below); minor updates grouped per
-  package manager
+- **Tier 1 (within-range):** patch updates, and npm minor updates,
+  auto-merge for post-1.0 packages, except security PRs (below); minor
+  updates grouped per package manager. A grouped PR auto-merges only
+  when every update in it qualifies, so one pre-1.0 package holds the
+  group for a human
 - **Tier 2 (cross-major):** major updates require Dependency Dashboard
   approval (governed decision)
 - **Security updates:** a PR Renovate opens for a vulnerability alert is
