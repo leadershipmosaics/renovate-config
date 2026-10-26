@@ -20,7 +20,7 @@
     "platformAutomerge": true
   },
   "vulnerabilityAlerts": {
-    "description": "Security PRs are never auto-merged: Renovate applies vulnerabilityAlerts after packageRules, so this beats the Tier 1 automerge rules (ruling 2026-10-23, lm_app#1718)",
+    "description": "Security PRs are never auto-merged: Renovate applies vulnerabilityAlerts after packageRules, so this beats the Tier 1 automerge rules (ruling 2026-10-23, leadershipmosaics/lm_app#1718)",
     "automerge": false
   },
   "packageRules": [
