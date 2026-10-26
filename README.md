@@ -23,6 +23,9 @@ Encodes the two-tier dependency currency model from
   packages; minor updates grouped per package manager
 - **Tier 2 (cross-major):** major updates require Dependency Dashboard
   approval (governed decision)
+- **Security updates:** a PR Renovate opens for a vulnerability alert is
+  never auto-merged, whatever its update type; a human merges it
+  (ruling 2026-10-23, `leadershipmosaics/lm_app#1718`)
 - **GitHub Actions:** SHA-pinned via `helpers:pinGitHubActionDigests`;
   minor/patch updates grouped and auto-merged
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
