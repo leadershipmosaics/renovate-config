@@ -63,6 +63,11 @@
       "automerge": false
     },
     {
+      "description": "Tool versions pinned in .mise.toml (mise manager) are runtime tooling: never auto-merge, any update type (lm_app ADR-0004 P4, update-cadence.md Cadence Summary). The patch rule above has no manager filter, so without this a post-1.0 mise patch, pin or digest update is auto-merge-eligible. Because a grouped PR auto-merges only when every update in it has automerge, a consumer group that contains a mise update, such as lm_app's supabase CLI group, turns manual (operator ruling 2026-10-29, closing the gap recorded in leadershipmosaics/lm_app#1751)",
+      "matchManagers": ["mise"],
+      "automerge": false
+    },
+    {
       "description": "Tier 2: Major updates require manual review (governed decision per the dependency currency practice; sequential stepping via :separateMultipleMajorReleases)",
       "matchUpdateTypes": ["major"],
       "dependencyDashboardApproval": true,
