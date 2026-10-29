@@ -24,8 +24,8 @@ is the org policy; this preset encodes it, and each consuming repo records
 its own divergences locally. What the preset does:
 
 - **Tier 1 (within-range):** patch updates, and npm minor updates,
-  auto-merge for post-1.0 packages, except security PRs, mise-managed
-  tools and `uses-with` versions (below); minor updates grouped per
+  auto-merge for post-1.0 packages, except security PRs, `uses-with`
+  versions and mise-managed tools (below); minor updates grouped per
   package manager. A grouped PR auto-merges only when every update in
   it qualifies, so one pre-1.0 package holds the group for a human
 - **Tier 2 (cross-major):** major updates require Dependency Dashboard
@@ -44,7 +44,7 @@ its own divergences locally. What the preset does:
   auto-merged
 - **mise-managed tools:** every version pinned in `.mise.toml` (mise
   manager) is runtime tooling and is never auto-merged, whatever the
-  update type; a consumer group that contains a mise update stays
+  update type; a consumer group that contains a mise update turns
   manual with it
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
 - **Rate limiting:** max 3 PRs/hour, 5 concurrent
