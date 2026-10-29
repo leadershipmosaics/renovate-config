@@ -16,8 +16,12 @@ Add to your repository's `renovate.json`:
 
 ## What this config does
 
-Encodes the two-tier dependency currency model from
-[ADR-0005](https://github.com/leadershipmosaics/ai-governance/blob/main/docs/decisions/0005-dependency-currency-practice.md):
+Encodes the two-tier dependency currency model from lm_app
+[ADR-0004](https://github.com/leadershipmosaics/lm_app/blob/main/docs/decisions/governance/0004-dependency-currency-practice.md).
+The policy table,
+[update-cadence.md](https://github.com/leadershipmosaics/lm_app/blob/main/docs/specifications/governance/dependency-currency/update-cadence.md),
+is the org policy and this preset encodes it; consuming repos record
+divergences locally:
 
 - **Tier 1 (within-range):** patch updates, and npm minor updates,
   auto-merge for post-1.0 packages, except security PRs (below); minor
@@ -32,7 +36,8 @@ Encodes the two-tier dependency currency model from
   Renovate app to have access to the repository's vulnerability alerts;
   without it the fix arrives as an ordinary Tier 1 PR
 - **GitHub Actions:** SHA-pinned via `helpers:pinGitHubActionDigests`;
-  minor/patch updates grouped and auto-merged
+  minor/patch updates grouped and auto-merged. Runtime versions in
+  `with:` blocks (`uses-with`) are never auto-merged
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
 - **Rate limiting:** max 3 PRs/hour, 5 concurrent
 - **npm lockfile stability:** `npmInstallTwice` — runs `npm install` twice
