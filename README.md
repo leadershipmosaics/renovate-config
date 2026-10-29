@@ -36,8 +36,10 @@ its own divergences locally. What the preset does:
   Renovate app to have access to the repository's vulnerability alerts;
   without it the fix arrives as an ordinary Tier 1 PR
 - **GitHub Actions:** SHA-pinned via `helpers:pinGitHubActionDigests`;
-  minor/patch/digest updates of actions, reusable workflows and workflow
-  images grouped and auto-merged. Tool and runtime versions passed through
+  minor/patch/digest updates of actions, reusable workflows, runner labels
+  and container, service and Docker-action images grouped and auto-merged;
+  the group is an explicit depType allow-list, so a new Renovate depType is
+  not grouped until added there. Tool and runtime versions passed through
   `with:` blocks (depType `uses-with`, e.g. `python-version`) are never
   auto-merged
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
