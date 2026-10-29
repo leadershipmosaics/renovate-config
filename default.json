@@ -50,14 +50,14 @@
     {
       "description": "Tier 1: Group GitHub Actions minor/patch updates",
       "matchManagers": ["github-actions"],
-      "matchDepTypes": ["action"],
+      "matchDepTypes": ["action", "workflow", "docker", "container", "service", "github-runner"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": "GitHub Actions updates",
       "automerge": true,
       "platformAutomerge": true
     },
     {
-      "description": "Runtime versions in a workflow with: block (uses-with) are runtime tooling: never auto-merge (lm_app ADR-0004 P4; lm_governance#87)",
+      "description": "Tool and runtime versions passed through a with: block (depType uses-with, e.g. python-version) are runtime tooling: never auto-merge (lm_app ADR-0004 P4; lm_governance#87). The group rule above lists every other github-actions depType so this one stays out of the auto-merged group",
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["uses-with"],
       "automerge": false

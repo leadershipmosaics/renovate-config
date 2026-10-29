@@ -18,10 +18,10 @@ Add to your repository's `renovate.json`:
 
 Encodes the two-tier dependency currency model from lm_app
 [ADR-0004](https://github.com/leadershipmosaics/lm_app/blob/main/docs/decisions/governance/0004-dependency-currency-practice.md).
-The policy table,
-[update-cadence.md](https://github.com/leadershipmosaics/lm_app/blob/main/docs/specifications/governance/dependency-currency/update-cadence.md),
-is the org policy and this preset encodes it; consuming repos record
-divergences locally:
+The policy table in lm_app
+[update-cadence.md](https://github.com/leadershipmosaics/lm_app/blob/main/docs/specifications/governance/dependency-currency/update-cadence.md)
+is the org policy; this preset encodes it, and each consuming repo records
+its own divergences locally. What the preset does:
 
 - **Tier 1 (within-range):** patch updates, and npm minor updates,
   auto-merge for post-1.0 packages, except security PRs (below); minor
@@ -36,8 +36,10 @@ divergences locally:
   Renovate app to have access to the repository's vulnerability alerts;
   without it the fix arrives as an ordinary Tier 1 PR
 - **GitHub Actions:** SHA-pinned via `helpers:pinGitHubActionDigests`;
-  minor/patch updates grouped and auto-merged. Runtime versions in
-  `with:` blocks (`uses-with`) are never auto-merged
+  minor/patch/digest updates of actions, reusable workflows and workflow
+  images grouped and auto-merged. Tool and runtime versions passed through
+  `with:` blocks (depType `uses-with`, e.g. `python-version`) are never
+  auto-merged
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
 - **Rate limiting:** max 3 PRs/hour, 5 concurrent
 - **npm lockfile stability:** `npmInstallTwice` — runs `npm install` twice
