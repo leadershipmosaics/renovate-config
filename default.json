@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "Shared Renovate config for leadershipmosaics repos. Extends config:best-practices (the maintained upstream baseline); encodes the two-tier dependency currency model (lm_app ADR-0004 / ai-governance ADR-0005). Divergences from the upstream baseline must carry a recorded rationale.",
+  "description": "Shared Renovate config for leadershipmosaics repos. Extends config:best-practices (the maintained upstream baseline); encodes the two-tier dependency currency model (lm_app ADR-0004 and its update-cadence.md policy table). Divergences from the upstream baseline must carry a recorded rationale.",
   "extends": [
     "config:best-practices",
     ":separateMultipleMajorReleases",
@@ -50,10 +50,17 @@
     {
       "description": "Tier 1: Group GitHub Actions minor/patch updates",
       "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action", "workflow", "docker", "container", "service", "github-runner"],
       "matchUpdateTypes": ["minor", "patch", "digest"],
       "groupName": "GitHub Actions updates",
       "automerge": true,
       "platformAutomerge": true
+    },
+    {
+      "description": "Tool and runtime versions passed through a with: block (depType uses-with, e.g. python-version) are runtime tooling: never auto-merge (lm_app ADR-0004 P4; lm_governance#87). The group rule above lists every other github-actions depType so this one stays out of the auto-merged group",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["uses-with"],
+      "automerge": false
     },
     {
       "description": "Tier 2: Major updates require manual review (governed decision per the dependency currency practice; sequential stepping via :separateMultipleMajorReleases)",
