@@ -49,7 +49,7 @@ done
 [[ "$security_hours" =~ ^[0-9]+$ ]] || { echo "ERROR: --security-hours must be a whole number, got: $security_hours" >&2; exit 2; }
 if [ -z "$now" ]; then now="$(date -u +%s)"; fi
 [[ "$now" =~ ^[0-9]+$ ]] || { echo "ERROR: --now must be epoch seconds, got: $now" >&2; exit 2; }
-if [ "$fail_on_pending" -eq 1 ] && { [ -z "$dashboard_file" ] || [ ! -f "$dashboard_file" ]; }; then
+if [ "$fail_on_pending" -eq 1 ] && { [ -z "$dashboard_file" ] || [ ! -f "$dashboard_file" ] || [ ! -r "$dashboard_file" ]; }; then
   echo "ERROR: --fail-on-pending needs a readable --dashboard-file" >&2
   exit 2
 fi
@@ -83,8 +83,15 @@ elif [ "$sec_rc" -ne 0 ]; then
 fi
 
 if [ "$fail_on_pending" -eq 1 ]; then
-  pending="$(awk '/^## Pending Approval/{f=1;next} /^## /{f=0} f' "${dashboard_file:?}" \
-    | grep -oE 'approve-branch=[^ ]+ -->.*' || true)"
+  section="$(awk '/^## Pending Approval/{f=1;next} /^## /{f=0} f' "${dashboard_file:?}")" \
+    || { echo "ERROR: could not read the Dashboard file" >&2; exit 2; }
+  # grep exits 1 on no match, which is a valid "nothing pending"; any other code is a failure.
+  grep_rc=0
+  pending="$(printf '%s\n' "$section" | grep -oE 'approve-branch=[^ ]+ -->.*')" || grep_rc=$?
+  if [ "$grep_rc" -gt 1 ]; then
+    echo "ERROR: the pending-section search failed (exit ${grep_rc})" >&2
+    exit 2
+  fi
   if [ -n "$pending" ]; then
     red=1
     printf 'Dashboard has items pending approval:\n%s\n' "$pending"

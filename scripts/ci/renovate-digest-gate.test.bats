@@ -38,7 +38,7 @@ run_gate() {
   [[ "$output" != *"#1 update a"* ]]
 }
 
-@test "stale days override is honoured" {
+@test "stale days override is honored" {
   run_gate "[$OLD]" --stale-days 30
   [ "$status" -eq 0 ]
 }
@@ -81,5 +81,17 @@ run_gate() {
   run_gate '[]' --stale-days abc
   [ "$status" -eq 2 ]
   run_gate '[]' --bogus
+  [ "$status" -eq 2 ]
+}
+
+@test "fail-on-pending with an unreadable dashboard file exits 2" {
+  printf '## Pending Approval\n - [ ] <!-- approve-branch=renovate/x -->major\n' > "$BATS_TEST_TMPDIR/d.md"
+  chmod 000 "$BATS_TEST_TMPDIR/d.md"
+  if [ -r "$BATS_TEST_TMPDIR/d.md" ]; then
+    chmod 644 "$BATS_TEST_TMPDIR/d.md"
+    skip "file stays readable (running as root)"
+  fi
+  run_gate "[$FRESH]" --fail-on-pending --dashboard-file "$BATS_TEST_TMPDIR/d.md"
+  chmod 644 "$BATS_TEST_TMPDIR/d.md"
   [ "$status" -eq 2 ]
 }

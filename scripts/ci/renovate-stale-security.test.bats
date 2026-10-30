@@ -84,7 +84,7 @@ run_script() {
   [ "$status" -eq 2 ]
 }
 
-@test "hours override is honoured" {
+@test "hours override is honored" {
   local json='[{"number":17,"title":"v [security]","createdAt":"2026-10-22T06:00:00Z","mergeStateStatus":"CLEAN","statusCheckRollup":[]}]'
   run_script "$json"
   [ "$status" -eq 0 ]

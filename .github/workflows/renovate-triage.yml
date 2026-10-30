@@ -46,26 +46,36 @@ on:
         description: "Go red when the Dashboard has items under Pending Approval"
         type: boolean
         default: false
-      tooling_ref:
-        description: "Ref of leadershipmosaics/renovate-config that supplies the scripts"
-        type: string
-        default: "main"
 
-# statusCheckRollup combines check runs and commit statuses, hence checks: read
-# and statuses: read; gh also reads each check's workflow run, hence actions: read.
-# A called workflow cannot exceed the caller's permissions; the caller states the same block.
-permissions:
-  contents: read
-  issues: write
-  pull-requests: read
-  checks: read
-  statuses: read
-  actions: read
+# Permissions are per job. statusCheckRollup combines check runs and commit
+# statuses, hence checks: read and statuses: read; gh also reads each check's
+# workflow run, hence actions: read. A called workflow cannot exceed the
+# caller's permissions; the caller states the same block per job.
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require a known job input
+        env:
+          JOB: ${{ inputs.job }}
+        run: |
+          if [ "$JOB" != "alarm" ] && [ "$JOB" != "digest" ]; then
+            echo "::error::input job must be 'alarm' or 'digest', got '${JOB}'"
+            exit 1
+          fi
+
   alarm:
+    needs: validate
     if: inputs.job == 'alarm'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      statuses: read
+      actions: read
     concurrency:
       group: renovate-triage-alarm-${{ github.repository }}
       cancel-in-progress: false
@@ -75,17 +85,19 @@ jobs:
       SECURITY_HOURS: ${{ inputs.security_stale_hours }}
     steps:
       # A called workflow's checkout fetches the CALLER's repo, so the scripts
-      # are fetched from the host repo explicitly. Public repo, no token.
+      # are fetched from the host repo explicitly, from main. A merge to
+      # renovate-config main therefore reaches every caller; branch protection
+      # on that repo is the control. Public repo, no token.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: leadershipmosaics/renovate-config
-          ref: ${{ inputs.tooling_ref }}
+          ref: main
           path: .renovate-config
           persist-credentials: false
 
       - name: Fail on Renovate security PRs open over the limit
         run: |
-          set -uo pipefail
+          set -euo pipefail
           # gh output goes to a file first so a gh failure is not masked by the pipe.
           if ! gh pr list --repo "$GITHUB_REPOSITORY" --author 'app/renovate' --state open --limit 100 \
                  --json number,title,createdAt,mergeStateStatus,statusCheckRollup > prs.json; then
@@ -114,8 +126,16 @@ jobs:
           fi
 
   digest:
+    needs: validate
     if: inputs.job == 'digest'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      checks: read
+      statuses: read
+      actions: read
     concurrency:
       group: renovate-triage-digest-${{ github.repository }}
       cancel-in-progress: false
@@ -132,7 +152,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: leadershipmosaics/renovate-config
-          ref: ${{ inputs.tooling_ref }}
+          ref: main
           path: .renovate-config
           persist-credentials: false
 
@@ -153,7 +173,7 @@ jobs:
 
           # A non-zero exit must not stop the digest, but a failed check is stated, never reported as none.
           sec_rc=0
-          sec_out="$(bash "${scripts}/renovate-stale-security.sh" --hours "$SECURITY_HOURS" < prs.json)" || sec_rc=$?
+          sec_out="$(bash "${scripts:?}/renovate-stale-security.sh" --hours "$SECURITY_HOURS" < prs.json)" || sec_rc=$?
           if [ "$sec_rc" -eq 0 ]; then
             security="_none_"
           elif [ "$sec_rc" -eq 1 ]; then
@@ -171,7 +191,9 @@ jobs:
           {
             echo "## Renovate triage digest: ${repo}, ${today}"
             echo
-            echo "_Mechanical weekly surface (shared workflow from leadershipmosaics/renovate-config). Adopt, defer or skip is the human decision; policy: ${POLICY_URL}_"
+            echo "_Weekly mechanical surface. Decisions are human: record adopt, defer or skip on the Dependency Dashboard._"
+            echo
+            echo "Policy: ${POLICY_URL}"
             echo
             echo "### Open Renovate PRs"
             echo "${pr_lines:-_none_}"
@@ -192,7 +214,7 @@ jobs:
           args=(--stale-days "$STALE_DAYS" --security-hours "$SECURITY_HOURS" --dashboard-file dashboard.md)
           if [ "$FAIL_ON_PENDING" = "true" ]; then args+=(--fail-on-pending); fi
           gate_rc=0
-          bash "${scripts}/renovate-digest-gate.sh" "${args[@]}" < prs.json > gate.md || gate_rc=$?
+          bash "${scripts:?}/renovate-digest-gate.sh" "${args[@]}" < prs.json > gate.md || gate_rc=$?
           cat gate.md >> "$GITHUB_STEP_SUMMARY"
           if [ "$gate_rc" -ne 0 ]; then
             cat gate.md

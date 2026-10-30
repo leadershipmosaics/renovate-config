@@ -92,9 +92,9 @@ crons to `job`.
 | `stale_days` | no | `7` | Days an open Renovate PR may wait |
 | `security_stale_hours` | no | `48` | Hours a security PR may stay open |
 | `fail_on_pending` | no | `false` | Go red on a non-empty Pending Approval section |
-| `tooling_ref` | no | `main` | Ref of this repo that supplies the scripts |
 
-Caller example (`.github/workflows/renovate-triage.yml` in the calling repo):
+Caller example (`.github/workflows/renovate-triage.yml` in the calling
+repo):
 
 ```yaml
 name: Renovate triage
@@ -103,16 +103,16 @@ on:
     - cron: "0 8 * * 1"   # Mondays, digest
     - cron: "30 8 * * *"  # daily, alarm
   workflow_dispatch: {}
-permissions:
-  contents: read
-  issues: write
-  pull-requests: read
-  checks: read
-  statuses: read
-  actions: read
 jobs:
   digest:
     if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 8 * * 1'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      checks: read
+      statuses: read
+      actions: read
     uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@main # pin to a full SHA
     with:
       job: digest
@@ -120,6 +120,12 @@ jobs:
       triage_issue: "41"
   alarm:
     if: github.event.schedule == '30 8 * * *'
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      statuses: read
+      actions: read
     uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@main # pin to a full SHA
     with:
       job: alarm
@@ -127,19 +133,22 @@ jobs:
       triage_issue: "41"
 ```
 
-The caller states the permissions block itself, because a called
-workflow cannot exceed its caller. The scripts are fetched by an explicit
-checkout of this repo at `tooling_ref` (default `main`), since a called
-workflow's `actions/checkout` fetches the caller's repo. The repo is
-public, so no token is needed. A caller that pins the workflow to a SHA
-can pass the same SHA as `tooling_ref` so workflow and scripts stay
-matched.
+The caller states the permissions per job, matching the called job,
+because a called workflow cannot exceed its caller. The `alarm` job
+needs no `issues: write`. A first `validate` job fails the run with a
+clear message when `job` is neither `alarm` nor `digest`.
 
-Pinning: callers reference the workflow by full commit SHA. That reference
-is a `uses:` of a reusable workflow (Renovate depType `workflow`), so the
-preset's "GitHub Actions updates" group keeps it current and auto-merges
-the digest bump like any other action digest. `tooling_ref` is a plain
-input and is not updated by Renovate.
+The scripts are fetched by an explicit checkout of this repo's `main`,
+since a called workflow's `actions/checkout` fetches the caller's repo.
+The repo is public, so no token is needed.
+
+Pinning: callers reference the workflow by full commit SHA. That
+reference is a `uses:` of a reusable workflow (Renovate depType
+`workflow`), so the preset's "GitHub Actions updates" group keeps it
+current and auto-merges the digest bump like any other action digest.
+The pin covers the workflow YAML only. The scripts always come from
+`main`, so a merge to this repo's `main` deploys script changes to every
+caller; branch protection on `main` is the control for that.
 
 Next step: lm_app migrates its in-repo `renovate-triage.yml` and
 `renovate-stale-security.sh` to this workflow and drops its own copies.
