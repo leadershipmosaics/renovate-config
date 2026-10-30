@@ -134,9 +134,11 @@ jobs:
       triage_issue: "117"
 ```
 
-The caller states the permissions per job, matching the called job,
-because a called workflow cannot exceed its caller. The `alarm` job
-needs no `issues: write`. A first `validate` job fails the run with a
+The caller states the permissions per job. GitHub checks every job of
+the called workflow against the calling job's permissions, whatever that
+job's `if`, so the `digest` job declares none and runs with the calling
+job's, while the `alarm` job declares a read-only set and needs no
+`issues: write`. A first `validate` job fails the run with a
 clear message when `job` is neither `alarm` nor `digest`.
 
 The scripts are fetched by an explicit checkout of this repo at

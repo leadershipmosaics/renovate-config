@@ -47,10 +47,13 @@ on:
         type: boolean
         default: false
 
-# Permissions are per job. statusCheckRollup combines check runs and commit
-# statuses, hence checks: read and statuses: read; gh also reads each check's
-# workflow run, hence actions: read. A called workflow cannot exceed the
-# caller's permissions; the caller states the same block per job.
+# Permissions. statusCheckRollup combines check runs and commit statuses,
+# hence checks: read and statuses: read; gh also reads each check's workflow
+# run, hence actions: read. GitHub checks every job of a called workflow
+# against the calling job's permissions, whatever that job's `if`, so the
+# digest job declares none and inherits the calling job's (which grants
+# issues: write), while the alarm job declares its read-only set, which can
+# only downgrade. The caller states the permissions per job.
 
 jobs:
   validate:
@@ -137,13 +140,7 @@ jobs:
     needs: validate
     if: inputs.job == 'digest'
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: read
-      checks: read
-      statuses: read
-      actions: read
+    # permissions: inherited from the calling job; see the note above jobs.
     concurrency:
       group: renovate-triage-digest-${{ github.repository }}
       cancel-in-progress: false
