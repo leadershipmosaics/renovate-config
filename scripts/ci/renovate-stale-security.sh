@@ -3,8 +3,8 @@
 #
 # A security fix that stays open is exposure, whether it is red or green. The
 # weekly digest already listed a red one for six weeks without effect, so the
-# daily job in .github/workflows/renovate-triage.yml runs this script and fails
-# when it flags anything. Runbook: docs/runbooks/renovate-security-pr-stuck.md.
+# alarm job of .github/workflows/renovate-triage.yml runs this script and fails
+# when it flags anything. The caller may pass a runbook_url input.
 #
 # Reads on stdin the JSON array from:
 #   gh pr list --author app/renovate --state open \
