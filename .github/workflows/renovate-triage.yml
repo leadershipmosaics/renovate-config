@@ -1,0 +1,201 @@
+name: Renovate triage
+
+# Org-shared Renovate triage, called from each repo's own scheduled workflow.
+# Mechanical only: it SURFACES state and decides or merges nothing.
+#   job: alarm   fails the run when a Renovate [security] PR is open over
+#                security_stale_hours.
+#   job: digest  posts the weekly digest on the triage issue, then fails the
+#                run when a Renovate PR is open over stale_days, a security PR
+#                is over security_stale_hours, or (fail_on_pending) the
+#                Dependency Dashboard has items under "## Pending Approval".
+# The caller owns its schedule and maps its crons to `job`; github.event.schedule
+# is the caller's event and is not read here.
+
+on:
+  workflow_call:
+    inputs:
+      job:
+        description: "alarm or digest"
+        type: string
+        required: true
+      dashboard_issue:
+        description: "Number of the Dependency Dashboard issue in the calling repo"
+        type: string
+        required: true
+      triage_issue:
+        description: "Number of the rolling triage issue that receives the digest"
+        type: string
+        required: true
+      policy_url:
+        description: "URL of the policy the digest cites"
+        type: string
+        default: "https://github.com/leadershipmosaics/lm_app/blob/main/docs/specifications/governance/dependency-currency/update-cadence.md"
+      runbook_url:
+        description: "Optional URL of the runbook for a stuck security PR"
+        type: string
+        default: ""
+      stale_days:
+        description: "Days an open Renovate PR may wait before the digest run goes red"
+        type: string
+        default: "7"
+      security_stale_hours:
+        description: "Hours a security PR may stay open before the run goes red"
+        type: string
+        default: "48"
+      fail_on_pending:
+        description: "Go red when the Dashboard has items under Pending Approval"
+        type: boolean
+        default: false
+      tooling_ref:
+        description: "Ref of leadershipmosaics/renovate-config that supplies the scripts"
+        type: string
+        default: "main"
+
+# statusCheckRollup combines check runs and commit statuses, hence checks: read
+# and statuses: read; gh also reads each check's workflow run, hence actions: read.
+# A called workflow cannot exceed the caller's permissions; the caller states the same block.
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+  checks: read
+  statuses: read
+  actions: read
+
+jobs:
+  alarm:
+    if: inputs.job == 'alarm'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: renovate-triage-alarm-${{ github.repository }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUNBOOK_URL: ${{ inputs.runbook_url }}
+      SECURITY_HOURS: ${{ inputs.security_stale_hours }}
+    steps:
+      # A called workflow's checkout fetches the CALLER's repo, so the scripts
+      # are fetched from the host repo explicitly. Public repo, no token.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: leadershipmosaics/renovate-config
+          ref: ${{ inputs.tooling_ref }}
+          path: .renovate-config
+          persist-credentials: false
+
+      - name: Fail on Renovate security PRs open over the limit
+        run: |
+          set -uo pipefail
+          # gh output goes to a file first so a gh failure is not masked by the pipe.
+          if ! gh pr list --repo "$GITHUB_REPOSITORY" --author 'app/renovate' --state open --limit 100 \
+                 --json number,title,createdAt,mergeStateStatus,statusCheckRollup > prs.json; then
+            echo "::error::gh pr list failed, so the stale security check did not run"
+            exit 1
+          fi
+          rc=0
+          bash .renovate-config/scripts/ci/renovate-stale-security.sh --hours "$SECURITY_HOURS" < prs.json > flagged.md || rc=$?
+          {
+            echo "### Security fixes open over ${SECURITY_HOURS}h"
+            if [ "$rc" -eq 0 ]; then
+              echo "_none_"
+            elif [ "$rc" -eq 1 ]; then
+              cat flagged.md
+              if [ -n "$RUNBOOK_URL" ]; then
+                echo
+                echo "Runbook: ${RUNBOOK_URL}"
+              fi
+            else
+              echo "Check failed: the script exited ${rc} on bad input."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::Renovate security PRs open over ${SECURITY_HOURS}h, or the check failed (exit ${rc}). See the job summary."
+            exit 1
+          fi
+
+  digest:
+    if: inputs.job == 'digest'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: renovate-triage-digest-${{ github.repository }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      DASHBOARD_ISSUE: ${{ inputs.dashboard_issue }}
+      TRIAGE_ISSUE: ${{ inputs.triage_issue }}
+      POLICY_URL: ${{ inputs.policy_url }}
+      RUNBOOK_URL: ${{ inputs.runbook_url }}
+      STALE_DAYS: ${{ inputs.stale_days }}
+      SECURITY_HOURS: ${{ inputs.security_stale_hours }}
+      FAIL_ON_PENDING: ${{ inputs.fail_on_pending }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: leadershipmosaics/renovate-config
+          ref: ${{ inputs.tooling_ref }}
+          path: .renovate-config
+          persist-credentials: false
+
+      - name: Build and post triage digest
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          scripts=".renovate-config/scripts/ci"
+          today="$(date -u +%Y-%m-%d)"
+
+          prs="$(gh pr list --repo "$repo" --author 'app/renovate' --state open --limit 100 \
+                   --json number,title,createdAt,mergeStateStatus,mergeable,statusCheckRollup)"
+          printf '%s' "$prs" > prs.json
+          pr_lines="$(echo "$prs" | jq -r '.[] | "- #\(.number) \(.title) — \(.mergeStateStatus)"')"
+          stuck="$(echo "$prs" | jq -r '.[]
+                     | select(.mergeStateStatus=="BLOCKED" or .mergeStateStatus=="DIRTY" or .mergeable=="CONFLICTING")
+                     | "- :warning: #\(.number) \(.title) — \(.mergeStateStatus)"')"
+
+          # A non-zero exit must not stop the digest, but a failed check is stated, never reported as none.
+          sec_rc=0
+          sec_out="$(bash "${scripts}/renovate-stale-security.sh" --hours "$SECURITY_HOURS" < prs.json)" || sec_rc=$?
+          if [ "$sec_rc" -eq 0 ]; then
+            security="_none_"
+          elif [ "$sec_rc" -eq 1 ]; then
+            security="$sec_out"
+            if [ -n "$RUNBOOK_URL" ]; then security="${security}"$'\n\n'"Runbook: ${RUNBOOK_URL}"; fi
+          else
+            security=":x: Security check failed (exit ${sec_rc}); do not read this section as none."
+          fi
+
+          gh issue view "$DASHBOARD_ISSUE" --repo "$repo" --json body --jq .body > dashboard.md
+          majors="$(awk '/^## Pending Approval/{f=1;next} /^## /{f=0} f' dashboard.md \
+                     | grep -oE 'approve-branch=[^ ]+ -->.*' \
+                     | sed -E 's/approve-branch=[^ ]+ --> ?/- /' || true)"
+
+          {
+            echo "## Renovate triage digest: ${repo}, ${today}"
+            echo
+            echo "_Mechanical weekly surface (shared workflow from leadershipmosaics/renovate-config). Adopt, defer or skip is the human decision; policy: ${POLICY_URL}_"
+            echo
+            echo "### Open Renovate PRs"
+            echo "${pr_lines:-_none_}"
+            echo
+            echo "### Stuck, needs attention (blocked or conflicting)"
+            echo "${stuck:-_none_}"
+            echo
+            echo "### Security fixes open over ${SECURITY_HOURS}h"
+            echo "${security}"
+            echo
+            echo "### Majors pending approval (Dashboard #${DASHBOARD_ISSUE})"
+            echo "${majors:-_none_}"
+          } > digest.md
+
+          gh issue comment "$TRIAGE_ISSUE" --repo "$repo" --body-file digest.md
+
+          # Evidence is posted; now decide whether the run goes red.
+          args=(--stale-days "$STALE_DAYS" --security-hours "$SECURITY_HOURS" --dashboard-file dashboard.md)
+          if [ "$FAIL_ON_PENDING" = "true" ]; then args+=(--fail-on-pending); fi
+          gate_rc=0
+          bash "${scripts}/renovate-digest-gate.sh" "${args[@]}" < prs.json > gate.md || gate_rc=$?
+          cat gate.md >> "$GITHUB_STEP_SUMMARY"
+          if [ "$gate_rc" -ne 0 ]; then
+            cat gate.md
+            echo "::error::Renovate triage found stale or pending items, or the gate failed (exit ${gate_rc}). The digest is on issue #${TRIAGE_ISSUE}."
+            exit 1
+          fi
