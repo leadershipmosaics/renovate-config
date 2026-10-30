@@ -61,6 +61,7 @@ jobs:
         env:
           JOB: ${{ inputs.job }}
         run: |
+          set -euo pipefail
           if [ "$JOB" != "alarm" ] && [ "$JOB" != "digest" ]; then
             echo "::error::input job must be 'alarm' or 'digest', got '${JOB}'"
             exit 1
@@ -84,6 +85,13 @@ jobs:
       RUNBOOK_URL: ${{ inputs.runbook_url }}
       SECURITY_HOURS: ${{ inputs.security_stale_hours }}
     steps:
+      - name: Assert the host commit is known
+        env:
+          HOST_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          : "${HOST_SHA:?job.workflow_sha is empty; the host checkout would silently fall back to main}"
+
       # A called workflow's checkout fetches the CALLER's repo, so the scripts
       # are fetched from the host repo explicitly, at the commit of this
       # workflow file (job.workflow_sha): a caller's SHA pin covers the
@@ -149,6 +157,13 @@ jobs:
       SECURITY_HOURS: ${{ inputs.security_stale_hours }}
       FAIL_ON_PENDING: ${{ inputs.fail_on_pending }}
     steps:
+      - name: Assert the host commit is known
+        env:
+          HOST_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          : "${HOST_SHA:?job.workflow_sha is empty; the host checkout would silently fall back to main}"
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: leadershipmosaics/renovate-config
@@ -184,9 +199,15 @@ jobs:
           fi
 
           gh issue view "$DASHBOARD_ISSUE" --repo "$repo" --json body --jq .body > dashboard.md
+          # grep exits 1 on no match, which is a valid empty list; any other code is a failure.
+          majors_rc=0
           majors="$(awk '/^## Pending Approval/{f=1;next} /^## /{f=0} f' dashboard.md \
                      | grep -oE 'approve-branch=[^ ]+ -->.*' \
-                     | sed -E 's/approve-branch=[^ ]+ --> ?/- /' || true)"
+                     | sed -E 's/approve-branch=[^ ]+ --> ?/- /')" || majors_rc=$?
+          if [ "$majors_rc" -gt 1 ]; then
+            echo "::error::the majors search failed (exit ${majors_rc}), so the digest would misreport it as none"
+            exit 2
+          fi
 
           {
             echo "## Renovate triage digest: ${repo}, ${today}"

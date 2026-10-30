@@ -113,11 +113,12 @@ jobs:
       checks: read
       statuses: read
       actions: read
-    uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@main # pin to a full SHA
+    uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@<full commit SHA> # main
     with:
       job: digest
       dashboard_issue: "40"
-      triage_issue: "41"
+      triage_issue: "117"
+      fail_on_pending: true
   alarm:
     if: github.event.schedule == '30 8 * * *'
     permissions:
@@ -126,11 +127,11 @@ jobs:
       checks: read
       statuses: read
       actions: read
-    uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@main # pin to a full SHA
+    uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@<full commit SHA> # main
     with:
       job: alarm
       dashboard_issue: "40"
-      triage_issue: "41"
+      triage_issue: "117"
 ```
 
 The caller states the permissions per job, matching the called job,
