@@ -60,3 +60,102 @@ its own divergences locally. What the preset does:
   transitive-vulnerability gap where a patched version is published but
   no top-level manifest change pulls it through. Safe to auto-merge:
   resolved versions move within ranges already accepted by maintainers.
+
+## Renovate triage workflow
+
+`.github/workflows/renovate-triage.yml` is a reusable workflow
+(`workflow_call`) that gives every repo the same Renovate triage. It
+surfaces state and decides or merges nothing. Two jobs, chosen by the
+caller through the `job` input:
+
+- `alarm` (run daily): fails the run when a Renovate `[security]` PR has
+  been open longer than `security_stale_hours`.
+- `digest` (run weekly and on manual dispatch): posts a digest comment on
+  the triage issue (open Renovate PRs, stuck PRs, stale security PRs,
+  majors pending approval), then fails the run when an open Renovate PR is
+  older than `stale_days`, a security PR is over `security_stale_hours`, or
+  `fail_on_pending` is true and the Dependency Dashboard has items under
+  `## Pending Approval`. The comment is posted before the failure, so a red
+  run always has its evidence on the triage issue.
+
+The caller owns its schedule. `github.event.schedule` is the caller's
+event, so the workflow does not route on cron text; the caller maps its
+crons to `job`.
+
+| Input | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `job` | yes | none | `alarm` or `digest` |
+| `dashboard_issue` | yes | none | Dashboard issue number in the calling repo |
+| `triage_issue` | yes | none | Rolling issue that receives the digest |
+| `policy_url` | no | lm_app `update-cadence.md` | Policy the digest cites |
+| `runbook_url` | no | empty | Runbook linked when a security PR is stuck |
+| `stale_days` | no | `7` | Days an open Renovate PR may wait |
+| `security_stale_hours` | no | `48` | Hours a security PR may stay open |
+| `fail_on_pending` | no | `false` | Go red on a non-empty Pending Approval |
+
+Caller example (`.github/workflows/renovate-triage.yml` in the calling
+repo):
+
+```yaml
+name: Renovate triage
+on:
+  schedule:
+    - cron: "0 8 * * 1"   # Mondays, digest
+    - cron: "30 8 * * *"  # daily, alarm
+  workflow_dispatch: {}
+jobs:
+  digest:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 8 * * 1'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      checks: read
+      statuses: read
+      actions: read
+    uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@<full commit SHA> # main
+    with:
+      job: digest
+      dashboard_issue: "40"
+      triage_issue: "117"
+      fail_on_pending: true
+  alarm:
+    if: github.event.schedule == '30 8 * * *'
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      statuses: read
+      actions: read
+    uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@<full commit SHA> # main
+    with:
+      job: alarm
+      dashboard_issue: "40"
+      triage_issue: "117"
+```
+
+The caller states the permissions per job. GitHub checks every job of
+the called workflow against the calling job's permissions, whatever that
+job's `if`, so the `digest` job declares none and runs with the calling
+job's, while the `alarm` job declares a read-only set and needs no
+`issues: write`. A first `validate` job fails the run with a
+clear message when `job` is neither `alarm` nor `digest`.
+
+The scripts are fetched by an explicit checkout of this repo at
+`job.workflow_sha`, the commit of the workflow file that defines the
+running job, since a called workflow's `actions/checkout` fetches the
+caller's repo. The repo is public, so no token is needed. actionlint
+1.7.12 does not know `job.workflow_sha` yet (rhysd/actionlint#707);
+run it with `-ignore 'property "workflow_sha" is not defined'`.
+
+Pinning: callers reference the workflow by full commit SHA. That
+reference is a `uses:` of a reusable workflow (Renovate depType
+`workflow`), so the preset's "GitHub Actions updates" group is expected
+to keep it current and auto-merge the digest bump like any other action
+digest. This is expected, not verified: the first Renovate run on a
+caller confirms it.
+The pin covers the workflow YAML and the scripts alike, since the
+scripts are checked out at the same commit.
+
+Next step: lm_app migrates its in-repo `renovate-triage.yml` and
+`renovate-stale-security.sh` to this workflow and drops its own copies.
