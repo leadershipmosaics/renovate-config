@@ -148,8 +148,10 @@ run it with `-ignore 'property "workflow_sha" is not defined'`.
 
 Pinning: callers reference the workflow by full commit SHA. That
 reference is a `uses:` of a reusable workflow (Renovate depType
-`workflow`), so the preset's "GitHub Actions updates" group keeps it
-current and auto-merges the digest bump like any other action digest.
+`workflow`), so the preset's "GitHub Actions updates" group is expected
+to keep it current and auto-merge the digest bump like any other action
+digest. This is expected, not verified: the first Renovate run on a
+caller confirms it.
 The pin covers the workflow YAML and the scripts alike, since the
 scripts are checked out at the same commit.
 
