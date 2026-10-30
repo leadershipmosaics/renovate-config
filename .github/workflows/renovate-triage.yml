@@ -199,14 +199,15 @@ jobs:
           fi
 
           gh issue view "$DASHBOARD_ISSUE" --repo "$repo" --json body --jq .body > dashboard.md
-          # grep exits 1 on no match, which is a valid empty list; any other code is a failure.
+          # awk runs alone so set -e stops the step when it fails; in the pipeline, pipefail
+          # would report grep's 1 (no match, a valid empty list) over awk's 2.
+          pending="$(awk '/^## Pending Approval/{f=1;next} /^## /{f=0} f' dashboard.md)"
           majors_rc=0
-          majors="$(awk '/^## Pending Approval/{f=1;next} /^## /{f=0} f' dashboard.md \
+          majors="$(printf '%s\n' "$pending" \
                      | grep -oE 'approve-branch=[^ ]+ -->.*' \
                      | sed -E 's/approve-branch=[^ ]+ --> ?/- /')" || majors_rc=$?
           if [ "$majors_rc" -gt 1 ]; then
-            echo "::error::the majors search failed (exit ${majors_rc}), so the digest would misreport it as none"
-            exit 2
+            majors=":x: Majors check failed (exit ${majors_rc}); do not read this section as none."
           fi
 
           {
@@ -240,5 +241,9 @@ jobs:
           if [ "$gate_rc" -ne 0 ]; then
             cat gate.md
             echo "::error::Renovate triage found stale or pending items, or the gate failed (exit ${gate_rc}). The digest is on issue #${TRIAGE_ISSUE}."
+            exit 1
+          fi
+          if [ "$majors_rc" -gt 1 ]; then
+            echo "::error::the majors search failed (exit ${majors_rc}); the digest on issue #${TRIAGE_ISSUE} says so."
             exit 1
           fi
