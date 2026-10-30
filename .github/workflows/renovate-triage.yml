@@ -85,13 +85,13 @@ jobs:
       SECURITY_HOURS: ${{ inputs.security_stale_hours }}
     steps:
       # A called workflow's checkout fetches the CALLER's repo, so the scripts
-      # are fetched from the host repo explicitly, from main. A merge to
-      # renovate-config main therefore reaches every caller; branch protection
-      # on that repo is the control. Public repo, no token.
+      # are fetched from the host repo explicitly, at the commit of this
+      # workflow file (job.workflow_sha): a caller's SHA pin covers the
+      # scripts too. Public repo, no token.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: leadershipmosaics/renovate-config
-          ref: main
+          ref: ${{ job.workflow_sha }}
           path: .renovate-config
           persist-credentials: false
 
@@ -152,7 +152,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: leadershipmosaics/renovate-config
-          ref: main
+          ref: ${{ job.workflow_sha }}
           path: .renovate-config
           persist-credentials: false
 

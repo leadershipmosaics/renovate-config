@@ -138,17 +138,19 @@ because a called workflow cannot exceed its caller. The `alarm` job
 needs no `issues: write`. A first `validate` job fails the run with a
 clear message when `job` is neither `alarm` nor `digest`.
 
-The scripts are fetched by an explicit checkout of this repo's `main`,
-since a called workflow's `actions/checkout` fetches the caller's repo.
-The repo is public, so no token is needed.
+The scripts are fetched by an explicit checkout of this repo at
+`job.workflow_sha`, the commit of the workflow file that defines the
+running job, since a called workflow's `actions/checkout` fetches the
+caller's repo. The repo is public, so no token is needed. actionlint
+1.7.12 does not know `job.workflow_sha` yet (rhysd/actionlint#707);
+run it with `-ignore 'property "workflow_sha" is not defined'`.
 
 Pinning: callers reference the workflow by full commit SHA. That
 reference is a `uses:` of a reusable workflow (Renovate depType
 `workflow`), so the preset's "GitHub Actions updates" group keeps it
 current and auto-merges the digest bump like any other action digest.
-The pin covers the workflow YAML only. The scripts always come from
-`main`, so a merge to this repo's `main` deploys script changes to every
-caller; branch protection on `main` is the control for that.
+The pin covers the workflow YAML and the scripts alike, since the
+scripts are checked out at the same commit.
 
 Next step: lm_app migrates its in-repo `renovate-triage.yml` and
 `renovate-stale-security.sh` to this workflow and drops its own copies.
