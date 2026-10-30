@@ -85,13 +85,13 @@ crons to `job`.
 | Input | Required | Default | Meaning |
 | --- | --- | --- | --- |
 | `job` | yes | none | `alarm` or `digest` |
-| `dashboard_issue` | yes | none | Dependency Dashboard issue number in the calling repo |
+| `dashboard_issue` | yes | none | Dashboard issue number in the calling repo |
 | `triage_issue` | yes | none | Rolling issue that receives the digest |
-| `policy_url` | no | lm_app `update-cadence.md` on GitHub | Policy the digest cites |
+| `policy_url` | no | lm_app `update-cadence.md` | Policy the digest cites |
 | `runbook_url` | no | empty | Runbook linked when a security PR is stuck |
 | `stale_days` | no | `7` | Days an open Renovate PR may wait |
 | `security_stale_hours` | no | `48` | Hours a security PR may stay open |
-| `fail_on_pending` | no | `false` | Go red on a non-empty Pending Approval section |
+| `fail_on_pending` | no | `false` | Go red on a non-empty Pending Approval |
 
 Caller example (`.github/workflows/renovate-triage.yml` in the calling
 repo):
