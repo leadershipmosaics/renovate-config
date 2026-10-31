@@ -104,9 +104,32 @@ alert() {
   [ "$status" -eq 2 ]
 }
 
-@test "zero --hours exits 2" {
-  run_script '[]' --hours 0
+@test "zero --hours flags every old patched alert" {
+  run_script "[$(alert 11 2026-10-10T12:00:00Z 2.8.7)]" --hours 0
+  [ "$status" -eq 1 ]
+  [[ "$output" == "- #11 re2js "* ]]
+}
+
+@test "negative --hours exits 2" {
+  run_script '[]' --hours -1
   [ "$status" -eq 2 ]
+}
+
+@test "a non-object element exits 2" {
+  run_script '[1]' --hours 48
+  [ "$status" -eq 2 ]
+}
+
+@test "an alert without security_vulnerability is not flagged" {
+  run_script '[{"number":12,"created_at":"2026-09-01T12:00:00Z"}]' --hours 48
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "null scope and missing severity print as unknown" {
+  run_script '[{"number":13,"created_at":"2026-09-01T12:00:00Z","html_url":"u","dependency":{"package":{"name":"p"},"manifest_path":"m","scope":null},"security_advisory":{"ghsa_id":"G"},"security_vulnerability":{"first_patched_version":{"identifier":"1.0.0"}}}]' --hours 48
+  [ "$status" -eq 1 ]
+  [[ "$output" == "- #13 p (unknown, m, unknown) patched in 1.0.0, open since 2026-09-01T12:00:00Z, G u" ]]
 }
 
 @test "an element missing number exits 2" {

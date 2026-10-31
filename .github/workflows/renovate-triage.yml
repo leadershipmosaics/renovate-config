@@ -41,7 +41,7 @@ on:
         type: string
         default: "7"
       security_stale_hours:
-        description: "Hours a security PR may stay open before the run goes red"
+        description: "Hours a security PR, or a Dependabot alert with a patch, may stay open before the run goes red"
         type: string
         default: "48"
       fail_on_pending:
@@ -56,8 +56,9 @@ on:
 # digest job declares none and inherits the calling job's (which grants
 # issues: write), while the alarm job declares its read-only set, which can
 # only downgrade. The alarm job also reads Dependabot alerts, hence
-# vulnerability-alerts: read (included in read-all). The caller states the
-# permissions per job.
+# vulnerability-alerts: read (included in read-all); because of the check above,
+# every calling job, the digest job included, must hold that scope. The caller
+# states the permissions per job.
 
 jobs:
   validate:
@@ -104,7 +105,8 @@ jobs:
       # are fetched from the host repo explicitly, at the commit of this
       # workflow file (job.workflow_sha): a caller's SHA pin covers the
       # scripts too. Public repo, no token.
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - id: host
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: leadershipmosaics/renovate-config
           ref: ${{ job.workflow_sha }}
@@ -142,13 +144,13 @@ jobs:
           fi
 
       - name: Fail on Dependabot alerts with a patch open over the limit
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.host.outcome == 'success' }}
         run: |
           set -euo pipefail
           # gh output goes to a file first so a gh failure is not masked by the pipe.
           # --paginate emits one JSON array per page; jq -s merges them into one.
           if ! gh api "repos/${GITHUB_REPOSITORY}/dependabot/alerts?state=open&per_page=100" --paginate > alert-pages.json; then
-            echo "::error::gh api dependabot/alerts failed, so the open alerts check did not run. Likely cause: the caller's alarm job lacks 'vulnerability-alerts: read', or Dependabot alerts are disabled on the repo."
+            echo "::error::gh api dependabot/alerts failed, so the open alerts check did not run. Likely causes: Dependabot alerts are disabled on the repo, a token or rate-limit failure, or a network failure."
             exit 1
           fi
           if ! jq -s 'add // []' alert-pages.json > alerts.json; then

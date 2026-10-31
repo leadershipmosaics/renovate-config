@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # renovate-open-alerts.sh: flag open Dependabot alerts that have a patch and sit too long.
 #
-# Renovate raises a security PR only for some alerts (a direct dependency whose
-# fix it can resolve). An alert with a published patch that no Renovate PR
-# covers is invisible to renovate-stale-security.sh, so the alarm job of
+# Renovate may open no PR for an alert. An alert with a published patch that no
+# Renovate PR covers is invisible to renovate-stale-security.sh, so the alarm job of
 # .github/workflows/renovate-triage.yml runs this script as a second check and
 # fails when it flags anything.
 #
@@ -20,7 +19,7 @@ usage() {
 Usage: <dependabot alerts JSON array> | renovate-open-alerts.sh --hours <n> [--now <epoch-seconds>]
 
 Prints one markdown line per open alert that has a patched version and is
-older than --hours (required, a positive whole number), oldest first:
+older than --hours (required, a whole number; 0 flags every patched alert), oldest first:
   - #N <package> (<severity>, <manifest>, <scope>) patched in <version>, open since <created_at>, <GHSA> <url>
 
 Alerts without a patched version are never flagged.
@@ -57,7 +56,7 @@ while [ $# -gt 0 ]; do
 done
 
 [ -n "$hours" ] || { echo "ERROR: --hours is required" >&2; exit 2; }
-[[ "$hours" =~ ^[1-9][0-9]*$ ]] || { echo "ERROR: --hours must be a positive whole number, got: $hours" >&2; exit 2; }
+[[ "$hours" =~ ^[0-9]+$ ]] || { echo "ERROR: --hours must be a whole number, got: $hours" >&2; exit 2; }
 if [ -z "$now" ]; then
   now="$(date -u +%s)"
 fi
@@ -79,11 +78,12 @@ fi
 
 lines="$(printf '%s' "$input" | jq -r --argjson now "$now" --argjson hours "$hours" '
   [ .[]
+    # An object with a null identifier counts as unpatched.
     | select(.security_vulnerability.first_patched_version.identifier != null)
     | (.created_at | fromdateiso8601) as $created
     | select(($now - $created) > ($hours * 3600))
     | { created: $created, line:
-        "- #\(.number) \(.dependency.package.name) (\(.security_advisory.severity), \(.dependency.manifest_path), \(.dependency.scope)) patched in \(.security_vulnerability.first_patched_version.identifier), open since \(.created_at), \(.security_advisory.ghsa_id) \(.html_url)" } ]
+        "- #\(.number) \(.dependency.package.name // "unknown") (\(.security_advisory.severity // "unknown"), \(.dependency.manifest_path // "unknown"), \(.dependency.scope // "unknown")) patched in \(.security_vulnerability.first_patched_version.identifier), open since \(.created_at), \(.security_advisory.ghsa_id // "unknown") \(.html_url // "")" } ]
   | sort_by(.created) | .[].line
 ')" || { echo "ERROR: could not evaluate the alert list" >&2; exit 2; }
 

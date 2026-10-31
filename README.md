@@ -91,7 +91,7 @@ crons to `job`.
 | `dashboard_issue` | yes | none | Dashboard issue number in the calling repo |
 | `triage_issue` | yes | none | Rolling issue that receives the digest |
 | `policy_url` | no | lm_app `update-cadence.md` | Policy the digest cites |
-| `runbook_url` | no | empty | Runbook linked when a security PR is stuck |
+| `runbook_url` | no | empty | Runbook linked when a security PR is stuck or an alert has no fix PR |
 | `stale_days` | no | `7` | Days an open Renovate PR may wait |
 | `security_stale_hours` | no | `48` | Hours a security PR, or a Dependabot alert with a patch, may stay open |
 | `fail_on_pending` | no | `false` | Go red on a non-empty Pending Approval |
@@ -116,6 +116,7 @@ jobs:
       checks: read
       statuses: read
       actions: read
+      vulnerability-alerts: read
     uses: leadershipmosaics/renovate-config/.github/workflows/renovate-triage.yml@<full commit SHA> # main
     with:
       job: digest
@@ -143,9 +144,12 @@ the called workflow against the calling job's permissions, whatever that
 job's `if`, so the `digest` job declares none and runs with the calling
 job's, while the `alarm` job declares a read-only set and needs no
 `issues: write`. The `alarm` job needs `vulnerability-alerts: read` to list
-Dependabot alerts (`read-all` includes it), and the repo must have Dependabot
-alerts enabled; otherwise the second check fails the run with a message
-naming both causes. A first `validate` job fails the run with a
+Dependabot alerts (`read-all` includes it), and because of that check every
+calling job must hold it, the `digest` caller job included. A caller missing
+the scope fails at startup with a workflow-level nested-job permission error,
+not in the alerts step. The alerts step itself fails with a message naming
+Dependabot alerts disabled on the repo, a token or rate-limit failure, or a
+network failure. A first `validate` job fails the run with a
 clear message when `job` is neither `alarm` nor `digest`.
 
 The scripts are fetched by an explicit checkout of this repo at
