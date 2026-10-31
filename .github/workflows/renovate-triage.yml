@@ -33,7 +33,7 @@ on:
         type: string
         default: "https://github.com/leadershipmosaics/lm_app/blob/main/docs/specifications/governance/dependency-currency/update-cadence.md"
       runbook_url:
-        description: "Optional URL of the runbook for a stuck security PR"
+        description: "Optional URL of the runbook for a stuck security PR or a Dependabot alert with a patch open over the limit"
         type: string
         default: ""
       stale_days:

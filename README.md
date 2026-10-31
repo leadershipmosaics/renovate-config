@@ -91,7 +91,7 @@ crons to `job`.
 | `dashboard_issue` | yes | none | Dashboard issue number in the calling repo |
 | `triage_issue` | yes | none | Rolling issue that receives the digest |
 | `policy_url` | no | lm_app `update-cadence.md` | Policy the digest cites |
-| `runbook_url` | no | empty | Runbook linked when a security PR is stuck or an alert has no fix PR |
+| `runbook_url` | no | empty | Runbook linked when a security PR is stuck or a Dependabot alert with a patch is open over the limit |
 | `stale_days` | no | `7` | Days an open Renovate PR may wait |
 | `security_stale_hours` | no | `48` | Hours a security PR, or a Dependabot alert with a patch, may stay open |
 | `fail_on_pending` | no | `false` | Go red on a non-empty Pending Approval |
@@ -147,9 +147,10 @@ job's, while the `alarm` job declares a read-only set and needs no
 Dependabot alerts (`read-all` includes it), and because of that check every
 calling job must hold it, the `digest` caller job included. A caller missing
 the scope fails at startup with a workflow-level nested-job permission error,
-not in the alerts step. The alerts step itself fails with a message naming
-Dependabot alerts disabled on the repo, a token or rate-limit failure, or a
-network failure. A first `validate` job fails the run with a
+not in the alerts step. The alerts step itself goes red when it flags an alert
+(listed in the job summary), when the alert pages cannot be merged, or when the
+fetch fails, with a message naming Dependabot alerts disabled on the repo, a
+token or rate-limit failure, or a network failure. A first `validate` job fails the run with a
 clear message when `job` is neither `alarm` nor `digest`.
 
 The scripts are fetched by an explicit checkout of this repo at

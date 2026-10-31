@@ -19,7 +19,7 @@ usage() {
 Usage: <dependabot alerts JSON array> | renovate-open-alerts.sh --hours <n> [--now <epoch-seconds>]
 
 Prints one markdown line per open alert that has a patched version and is
-older than --hours (required, a whole number; 0 flags every patched alert), oldest first:
+older than --hours (required, a whole number; 0 flags every patched alert created before now), oldest first:
   - #N <package> (<severity>, <manifest>, <scope>) patched in <version>, open since <created_at>, <GHSA> <url>
 
 Alerts without a patched version are never flagged.
@@ -78,12 +78,12 @@ fi
 
 lines="$(printf '%s' "$input" | jq -r --argjson now "$now" --argjson hours "$hours" '
   [ .[]
+    | (.created_at | fromdateiso8601) as $created
     # An object with a null identifier counts as unpatched.
     | select(.security_vulnerability.first_patched_version.identifier != null)
-    | (.created_at | fromdateiso8601) as $created
     | select(($now - $created) > ($hours * 3600))
     | { created: $created, line:
-        "- #\(.number) \(.dependency.package.name // "unknown") (\(.security_advisory.severity // "unknown"), \(.dependency.manifest_path // "unknown"), \(.dependency.scope // "unknown")) patched in \(.security_vulnerability.first_patched_version.identifier), open since \(.created_at), \(.security_advisory.ghsa_id // "unknown") \(.html_url // "")" } ]
+        "- #\(.number) \(.dependency.package.name // "unknown") (\(.security_advisory.severity // "unknown"), \(.dependency.manifest_path // "unknown"), \(.dependency.scope // "unknown")) patched in \(.security_vulnerability.first_patched_version.identifier), open since \(.created_at), \(.security_advisory.ghsa_id // "unknown") \(.html_url // "unknown")" } ]
   | sort_by(.created) | .[].line
 ')" || { echo "ERROR: could not evaluate the alert list" >&2; exit 2; }
 
