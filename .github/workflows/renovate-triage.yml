@@ -3,7 +3,9 @@ name: Renovate triage
 # Org-shared Renovate triage, called from each repo's own scheduled workflow.
 # Mechanical only: it SURFACES state and decides or merges nothing.
 #   job: alarm   fails the run when a Renovate [security] PR is open over
-#                security_stale_hours.
+#                security_stale_hours, or when an open Dependabot alert of the
+#                calling repo has a patch and is older than security_stale_hours
+#                (the PR check cannot see an alert Renovate never turned into a PR).
 #   job: digest  posts the weekly digest on the triage issue, then fails the
 #                run when a Renovate PR is open over stale_days, a security PR
 #                is over security_stale_hours, or (fail_on_pending) the
@@ -53,7 +55,9 @@ on:
 # against the calling job's permissions, whatever that job's `if`, so the
 # digest job declares none and inherits the calling job's (which grants
 # issues: write), while the alarm job declares its read-only set, which can
-# only downgrade. The caller states the permissions per job.
+# only downgrade. The alarm job also reads Dependabot alerts, hence
+# vulnerability-alerts: read (included in read-all). The caller states the
+# permissions per job.
 
 jobs:
   validate:
@@ -80,6 +84,7 @@ jobs:
       checks: read
       statuses: read
       actions: read
+      vulnerability-alerts: read
     concurrency:
       group: renovate-triage-alarm-${{ github.repository }}
       cancel-in-progress: false
@@ -133,6 +138,41 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$rc" -ne 0 ]; then
             echo "::error::Renovate security PRs open over ${SECURITY_HOURS}h, or the check failed (exit ${rc}). See the job summary."
+            exit 1
+          fi
+
+      - name: Fail on Dependabot alerts with a patch open over the limit
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          # gh output goes to a file first so a gh failure is not masked by the pipe.
+          # --paginate emits one JSON array per page; jq -s merges them into one.
+          if ! gh api "repos/${GITHUB_REPOSITORY}/dependabot/alerts?state=open&per_page=100" --paginate > alert-pages.json; then
+            echo "::error::gh api dependabot/alerts failed, so the open alerts check did not run. Likely cause: the caller's alarm job lacks 'vulnerability-alerts: read', or Dependabot alerts are disabled on the repo."
+            exit 1
+          fi
+          if ! jq -s 'add // []' alert-pages.json > alerts.json; then
+            echo "::error::could not merge the Dependabot alert pages, so the open alerts check did not run"
+            exit 1
+          fi
+          rc=0
+          bash .renovate-config/scripts/ci/renovate-open-alerts.sh --hours "$SECURITY_HOURS" < alerts.json > flagged-alerts.md || rc=$?
+          {
+            echo "### Dependabot alerts with a patch, open over ${SECURITY_HOURS}h"
+            if [ "$rc" -eq 0 ]; then
+              echo "_none_"
+            elif [ "$rc" -eq 1 ]; then
+              cat flagged-alerts.md
+              if [ -n "$RUNBOOK_URL" ]; then
+                echo
+                echo "Runbook: ${RUNBOOK_URL}"
+              fi
+            else
+              echo "Check failed: the script exited ${rc} on bad input."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::Dependabot alerts with a patch open over ${SECURITY_HOURS}h, or the check failed (exit ${rc}). See the job summary."
             exit 1
           fi
 
