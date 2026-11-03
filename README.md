@@ -49,8 +49,8 @@ its own divergences locally. What the preset does:
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
 - **Rate limiting:** max 3 PRs/hour, 5 concurrent; lock file maintenance
   is exempt from these two limits, so open manual PRs can no longer crowd
-  it out of its Monday window for the week. Its schedule and any cap the
-  hosted app sets still apply
+  it out of its Monday window for the week. Its schedule, Renovate's
+  per-run commit limit and any cap the hosted app sets still apply
 - **npm lockfile stability:** `npmInstallTwice` — runs `npm install` twice
   after each dependency update so the lockfile stabilizes before Renovate
   commits. Documented Renovate workaround for the class of npm bugs where
