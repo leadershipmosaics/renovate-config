@@ -47,7 +47,10 @@ its own divergences locally. What the preset does:
   update type; a consumer group that contains a mise update turns
   manual with it
 - **Schedule:** weekly, Monday mornings (Europe/Amsterdam)
-- **Rate limiting:** max 3 PRs/hour, 5 concurrent
+- **Rate limiting:** max 3 PRs/hour, 5 concurrent; lock file maintenance
+  is exempt from these two limits, so open manual PRs can no longer crowd
+  it out of its Monday window for the week. Its schedule, Renovate's
+  per-run commit limit and any cap the hosted app sets still apply
 - **npm lockfile stability:** `npmInstallTwice` — runs `npm install` twice
   after each dependency update so the lockfile stabilizes before Renovate
   commits. Documented Renovate workaround for the class of npm bugs where
@@ -60,6 +63,11 @@ its own divergences locally. What the preset does:
   transitive-vulnerability gap where a patched version is published but
   no top-level manifest change pulls it through. Safe to auto-merge:
   resolved versions move within ranges already accepted by maintainers.
+  The mise manager is excluded from it: Renovate would add a mise
+  upgrade to the lock file PR even without a `mise.lock`, and the rule
+  that keeps mise updates manual would then turn the whole PR manual.
+  A consumer that adds a `mise.lock` gets no weekly refresh of it; its
+  tool versions move only through the manual mise PRs.
 
 ## Renovate triage workflow
 

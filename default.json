@@ -12,8 +12,17 @@
   "prHourlyLimit": 3,
   "prConcurrentLimit": 5,
   "postUpdateOptions": ["npmInstallTwice"],
+  "mise": {
+    "lockFileMaintenance": {
+      "description": "No lock file maintenance for the mise manager: Renovate builds one for .mise.toml even without a mise.lock, and the mise automerge:false rule below then turns the whole weekly lock file PR manual. Symptom observed on leadershipmosaics/lm_app#1786; the mise upgrade and its automerge:false reproduced by renovate 44.198.0's own flatten code given this preset and a synthetic package-file list; a real dry run on a fixture repo showed one upgrade fewer after the change. Mise tool updates still arrive as ordinary manual PRs; a consumer that adds a mise.lock gets no refresh of it.",
+      "enabled": false
+    }
+  },
   "lockFileMaintenance": {
+    "description": "Exempt from the preset's hourly and concurrent PR limits (0 = no limit). With 5 Renovate PRs open on a Monday the concurrent limit held this branch back until its schedule closed for the week. lm_app had no lock file PR between #931 (2026-06-01) and #1786 (2026-11-02); earlier Mondays are not observable, but on 2026-10-26 the Dashboard showed it Rate-Limited in every run the record shows, with 5 PRs open. Renovate also sorts this branch last, so it is always among those dropped when slots fill within a run. The schedule, Renovate's per-run commit limit and the hosted app's own caps still apply; an open lock file PR still counts toward the 5, and one created this hour toward the 3, for the other branches.",
     "enabled": true,
+    "prConcurrentLimit": 0,
+    "prHourlyLimit": 0,
     "schedule": ["before 9am on monday"],
     "automerge": true,
     "automergeType": "pr",
